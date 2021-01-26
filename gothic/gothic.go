@@ -61,8 +61,8 @@ for the requested provider.
 
 See https://github.com/markbates/goth/examples/main.go to see this in action.
 */
-func BeginAuthHandler(res http.ResponseWriter, req *http.Request) {
-	url, err := GetAuthURL(res, req)
+func BeginAuthHandler(res http.ResponseWriter, req *http.Request, provd string) {
+	url, err := GetAuthURL(res, req, provd)
 	if err != nil {
 		res.WriteHeader(http.StatusBadRequest)
 		fmt.Fprintln(res, err)
@@ -112,12 +112,12 @@ as either "provider" or ":provider".
 I would recommend using the BeginAuthHandler instead of doing all of these steps
 yourself, but that's entirely up to you.
 */
-func GetAuthURL(res http.ResponseWriter, req *http.Request) (string, error) {
+func GetAuthURL(res http.ResponseWriter, req *http.Request, provd string) (string, error) {
 	if !keySet && defaultStore == Store {
 		fmt.Println("goth/gothic: no SESSION_SECRET environment variable is set. The default cookie store is not available and any calls will fail. Ignore this warning if you are using a different store.")
 	}
 
-	providerName, err := GetProviderName(req)
+	providerName, err := GetProviderName(provd)
 	if err != nil {
 		return "", err
 	}
@@ -154,13 +154,13 @@ as either "provider" or ":provider".
 
 See https://github.com/markbates/goth/examples/main.go to see this in action.
 */
-var CompleteUserAuth = func(res http.ResponseWriter, req *http.Request) (goth.User, error) {
+var CompleteUserAuth = func(res http.ResponseWriter, req *http.Request, provd string) (goth.User, error) {
 	defer Logout(res, req)
 	if !keySet && defaultStore == Store {
 		fmt.Println("goth/gothic: no SESSION_SECRET environment variable is set. The default cookie store is not available and any calls will fail. Ignore this warning if you are using a different store.")
 	}
 
-	providerName, err := GetProviderName(req)
+	providerName, err := GetProviderName(provd)
 	if err != nil {
 		return goth.User{}, err
 	}
@@ -255,7 +255,14 @@ func Logout(res http.ResponseWriter, req *http.Request) error {
 // the URL query string. If you provide it in a different way,
 // assign your own function to this variable that returns the provider
 // name for your request.
-var GetProviderName = getProviderName
+var GetProviderName = setProviderName
+
+func setProviderName(provider string) (string, error)  {
+	if provider == "" {
+		return "", errors.New("You must select a provider")
+	}
+	return provider, nil
+}
 
 func getProviderName(req *http.Request) (string, error) {
 
